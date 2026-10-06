@@ -1,0 +1,539 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+
+    <title>AI Flashcard Generator</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #eef2ff, #f8fafc);
+            text-align: center;
+            padding: 30px 15px;
+            margin: 0;
+        }
+
+        h1 {
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #64748b;
+            margin-bottom: 25px;
+        }
+
+        textarea {
+            width: 75%;
+            max-width: 850px;
+            padding: 16px;
+            font-size: 16px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            resize: vertical;
+            outline: none;
+            background: white;
+        }
+
+        textarea:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+        }
+
+        .controls {
+            margin: 20px 0;
+        }
+
+        label {
+            font-weight: bold;
+            color: #334155;
+        }
+
+        select {
+            padding: 10px 14px;
+            margin-left: 8px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 15px;
+            background: white;
+        }
+
+        button {
+            padding: 11px 20px;
+            margin: 8px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            opacity: 0.9;
+        }
+
+        .generate {
+            background: #4f46e5;
+            color: white;
+            font-weight: bold;
+            padding: 13px 25px;
+        }
+
+        .clear {
+            background: #e2e8f0;
+            color: #334155;
+        }
+
+        #status {
+            margin: 18px;
+            min-height: 24px;
+            font-weight: bold;
+            color: #4f46e5;
+        }
+
+        .card {
+            background: white;
+            width: 90%;
+            max-width: 600px;
+            min-height: 250px;
+            margin: 25px auto;
+            padding: 30px;
+            border-radius: 18px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        }
+
+        .card h2 {
+            color: #475569;
+            margin-top: 0;
+        }
+
+        #cardNumber {
+            color: #4f46e5;
+        }
+
+        #question {
+            font-size: 23px;
+            font-weight: bold;
+            color: #1e293b;
+            margin: 35px 10px;
+            line-height: 1.5;
+        }
+
+        #answer {
+            font-size: 18px;
+            color: #475569;
+            background: #f1f5f9;
+            padding: 18px;
+            border-radius: 10px;
+            margin: 25px 10px;
+            line-height: 1.5;
+        }
+
+        .answer-button {
+            background: #0f172a;
+            color: white;
+        }
+
+        .navigation {
+            display: none;
+            margin-top: 10px;
+        }
+
+        .navigation button {
+            background: #4f46e5;
+            color: white;
+        }
+
+        @media (max-width: 700px) {
+
+            textarea {
+                width: 95%;
+            }
+
+            .card {
+                width: 95%;
+                padding: 20px;
+            }
+
+            #question {
+                font-size: 20px;
+            }
+
+            #answer {
+                font-size: 16px;
+            }
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <h1>🤖 AI Flashcard Generator</h1>
+
+    <p class="subtitle">
+        Turn your study material into smart flashcards
+    </p>
+
+
+    <textarea
+        id="text"
+        rows="8"
+        placeholder="Paste your study material here..."
+    ></textarea>
+
+
+    <div class="controls">
+
+        <label for="count">
+            Number of Flashcards:
+        </label>
+
+        <select id="count">
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="15">15</option>
+        </select>
+
+    </div>
+
+
+    <button class="generate" onclick="generateFlashcards()">
+        ✨ Generate Flashcards
+    </button>
+
+    <button class="clear" onclick="clearAll()">
+        🗑 Clear
+    </button>
+
+
+    <div id="status"></div>
+
+
+    <div class="card" id="card" style="display:none;">
+
+        <h2>
+            Flashcard
+            <span id="cardNumber"></span>
+        </h2>
+
+
+        <div id="question"></div>
+
+
+        <div id="answer" style="display:none;"></div>
+
+
+        <button
+            class="answer-button"
+            onclick="showAnswer()"
+        >
+            👁 Show Answer
+        </button>
+
+    </div>
+
+
+    <div class="navigation">
+
+        <button onclick="previousCard()">
+            ⬅ Previous
+        </button>
+
+        <button onclick="nextCard()">
+            Next ➡
+        </button>
+
+    </div>
+
+
+    <script>
+
+        let flashcards = [];
+        let currentCard = 0;
+
+
+        async function generateFlashcards() {
+
+            const text =
+                document.getElementById("text").value;
+
+            const count =
+                document.getElementById("count").value;
+
+            const status =
+                document.getElementById("status");
+
+
+            if (text.trim() === "") {
+
+                status.textContent =
+                    "Please enter some study material.";
+
+                return;
+            }
+
+
+            status.textContent =
+                "⏳ Generating flashcards...";
+
+
+            try {
+
+                const response = await fetch(
+                    "/generate",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            text: text,
+                            count: count
+                        })
+                    }
+                );
+
+
+                const data =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        data.error ||
+                        "Something went wrong"
+                    );
+
+                }
+
+
+                parseFlashcards(
+                    data.flashcards
+                );
+
+
+                if (flashcards.length === 0) {
+
+                    throw new Error(
+                        "No flashcards were generated."
+                    );
+
+                }
+
+
+                status.textContent =
+                    "✅ Flashcards generated successfully!";
+
+
+                document.getElementById(
+                    "card"
+                ).style.display = "block";
+
+
+                document.querySelector(
+                    ".navigation"
+                ).style.display = "block";
+
+
+                currentCard = 0;
+
+                showCard();
+
+
+            }
+
+            catch (error) {
+
+                status.textContent =
+                    "❌ Error: " + error.message;
+
+                console.error(error);
+
+            }
+
+        }
+
+
+        function parseFlashcards(text) {
+
+            flashcards = [];
+
+            const lines =
+                text.split("\n");
+
+            let question = "";
+            let answer = "";
+
+
+            for (let line of lines) {
+
+                line = line.trim();
+
+
+                if (line.startsWith("Q")) {
+
+                    if (question !== "") {
+
+                        flashcards.push({
+                            question: question,
+                            answer: answer
+                        });
+
+                    }
+
+
+                    question =
+                        line.substring(
+                            line.indexOf(":") + 1
+                        ).trim();
+
+                    answer = "";
+
+                }
+
+
+                else if (line.startsWith("A")) {
+
+                    answer =
+                        line.substring(
+                            line.indexOf(":") + 1
+                        ).trim();
+
+                }
+
+            }
+
+
+            if (question !== "") {
+
+                flashcards.push({
+                    question: question,
+                    answer: answer
+                });
+
+            }
+
+        }
+
+
+        function showCard() {
+
+            if (flashcards.length === 0) {
+                return;
+            }
+
+
+            const card =
+                flashcards[currentCard];
+
+
+            document.getElementById(
+                "cardNumber"
+            ).textContent =
+                (currentCard + 1) +
+                " / " +
+                flashcards.length;
+
+
+            document.getElementById(
+                "question"
+            ).textContent =
+                card.question;
+
+
+            document.getElementById(
+                "answer"
+            ).textContent =
+                card.answer;
+
+
+            document.getElementById(
+                "answer"
+            ).style.display = "none";
+
+        }
+
+
+        function showAnswer() {
+
+            document.getElementById(
+                "answer"
+            ).style.display = "block";
+
+        }
+
+
+        function nextCard() {
+
+            if (
+                currentCard <
+                flashcards.length - 1
+            ) {
+
+                currentCard++;
+
+                showCard();
+
+            }
+
+        }
+
+
+        function previousCard() {
+
+            if (currentCard > 0) {
+
+                currentCard--;
+
+                showCard();
+
+            }
+
+        }
+
+
+        function clearAll() {
+
+            document.getElementById(
+                "text"
+            ).value = "";
+
+
+            document.getElementById(
+                "status"
+            ).textContent = "";
+
+
+            document.getElementById(
+                "card"
+            ).style.display = "none";
+
+
+            document.querySelector(
+                ".navigation"
+            ).style.display = "none";
+
+
+            flashcards = [];
+
+            currentCard = 0;
+
+        }
+
+    </script>
+
+</body>
+
+</html>
